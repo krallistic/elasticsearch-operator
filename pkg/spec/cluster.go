@@ -54,6 +54,8 @@ type ClusterSpec struct {
 	// to deploy persistent volumes for data nodes
 	Zones []string `json:"zones,omitempty"`
 
+	AntiAffinity string `json:"antiAffinity,omitempty"`
+
 	// DataDiskSize specifies how large the persistent volume should be attached
 	// to the data nodes in the ES cluster
 	DataDiskSize string `json:"data-volume-size"`

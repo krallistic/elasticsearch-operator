@@ -31,6 +31,7 @@ import (
 	"github.com/upmc-enterprises/elasticsearch-operator/pkg/snapshot"
 	myspec "github.com/upmc-enterprises/elasticsearch-operator/pkg/spec"
 	"github.com/upmc-enterprises/elasticsearch-operator/util/k8sutil"
+	"strings"
 )
 
 // processorLock ensures that reconciliation and event processing does
@@ -164,6 +165,13 @@ func (p *Processor) processElasticSearchCluster(c myspec.ElasticSearchCluster) e
 	p.k8sclient.CreateClientMasterDeployment("master", baseImage, &c.Spec.MasterNodeReplicas)
 
 	zoneCount := 0
+	var antiAffinty string
+	//To lower so
+	strings.ToLower(antiAffinty)
+	if !(antiAffinty == "hard" || antiAffinty == "soft") {
+		antiAffinty = nil
+	}
+
 	if len(c.Spec.Zones) != 0 {
 		zoneCount = len(c.Spec.Zones)
 
@@ -175,13 +183,13 @@ func (p *Processor) processElasticSearchCluster(c myspec.ElasticSearchCluster) e
 		zoneDistribution := p.calculateZoneDistribution(c.Spec.DataNodeReplicas, zoneCount)
 
 		for index, count := range zoneDistribution {
-			p.k8sclient.CreateDataNodeDeployment(&count, p.baseImage, c.Spec.Zones[index], c.Spec.DataDiskSize)
+			p.k8sclient.CreateDataNodeDeployment(&count, p.baseImage, c.Spec.Zones[index], c.Spec.DataDiskSize, antiAffinty)
 		}
 	} else {
 		// No zones defined, rely on current provisioning logic which may break. Other strategy is to use emptyDir?
 		// NOTE: Issue with dynamic PV provisioning (https://github.com/kubernetes/kubernetes/issues/34583)
 		p.k8sclient.CreateStorageClass("es-default", c.Spec.Storage.StorageClassProvisoner, c.Spec.Storage.StorageType)
-		p.k8sclient.CreateDataNodeDeployment(func() *int32 { i := int32(c.Spec.DataNodeReplicas); return &i }(), p.baseImage, "es-default", c.Spec.DataDiskSize)
+		p.k8sclient.CreateDataNodeDeployment(func() *int32 { i := int32(c.Spec.DataNodeReplicas); return &i }(), p.baseImage, "es-default", c.Spec.DataDiskSize, antiAffinty)
 	}
 
 	// Setup CronSchedule

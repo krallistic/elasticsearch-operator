@@ -47,6 +47,7 @@ import (
 	storage "k8s.io/client-go/pkg/apis/storage/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"github.com/kubernetes/client-go/kubernetes"
 )
 
 var (
@@ -691,7 +692,7 @@ func (k *K8sutil) CreateClientMasterDeployment(deploymentType, baseImage string,
 }
 
 // CreateDataNodeDeployment creates the data node deployment
-func (k *K8sutil) CreateDataNodeDeployment(replicas *int32, baseImage, storageClass string, dataDiskSize string) error {
+func (k *K8sutil) CreateDataNodeDeployment(replicas *int32, baseImage, storageClass string, dataDiskSize string, antiAffinity string) error {
 
 	statefulSetName := fmt.Sprintf("%s-%s", dataDeploymentName, storageClass)
 
@@ -724,6 +725,7 @@ func (k *K8sutil) CreateDataNodeDeployment(replicas *int32, baseImage, storageCl
 						},
 						Annotations: map[string]string{
 							"pod.beta.kubernetes.io/init-containers": "[ { \"name\": \"sysctl\", \"image\": \"busybox\", \"imagePullPolicy\": \"IfNotPresent\", \"command\": [\"sysctl\", \"-w\", \"vm.max_map_count=262144\"], \"securityContext\": { \"privileged\": true } }]",
+							"scheduler.alpha.kubernetes.io/affinity": "{ \"podAntiAffinity\": {\"requiredDuringSchedulingIgnoredDuringExecution\": [{\"labelSelector\": {\"matchExpressions\": [{\"key\": \"component\",\"operator\": \"In\",\"values\": [\"{{.Release.Name}}\"]}]},\"topologyKey\": \"kubernetes.io/hostname\"}]}}",
 						},
 					},
 					Spec: v1.PodSpec{
